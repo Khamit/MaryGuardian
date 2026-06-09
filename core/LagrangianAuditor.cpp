@@ -103,34 +103,37 @@ void LagrangianAuditor::updateEma(double& ema, double new_value) {
     ema = ema * (1.0 - config_.energy_ema_alpha) + new_value * config_.energy_ema_alpha;
 }
 
-bool LagrangianAuditor::auditEnergyConservation(const CanonicalState& current_state, double dt) {
+bool LagrangianAuditor::auditEnergyConservation(const CanonicalState& current_state,
+                                                  const std::vector<std::vector<double>>& interWeights,
+                                                  double dt) {
+    // Сохраняем последнее состояние
+    last_state_ = current_state;
+    
+    // Вычисляем компоненты энергии с переданными весами
+    last_kinetic_ = computeKineticEnergy(current_state);
+    last_potential_ = computePotentialEnergy(current_state, interWeights);
+    last_total_energy_ = last_kinetic_ + last_potential_;
+    
     double current_energy = current_state.total_energy;
     
-    // Сохраняем историю
+    // Остальной код без изменений...
     energy_history_.push_back(current_energy);
-    if (energy_history_.size() > (size_t)config_.history_size) {
-        energy_history_.pop_front();
-    }
     
     if (reference_energy_ == 0.0) {
         reference_energy_ = current_energy;
         return true;
     }
     
-    // Относительное изменение энергии
     double energy_change = std::abs(current_energy - reference_energy_);
     double relative_change = energy_change / (std::abs(reference_energy_) + 1e-9);
     
-    // Обновляем EMA ошибки
     updateEma(energy_error_ema_, relative_change);
     
-    // Проверка на галлюцинацию
     bool conserved = (relative_change < config_.energy_conservation_threshold);
     
     if (!conserved) {
         conservation_violations_++;
         
-        // Логирование
         if (conservation_violations_ % 10 == 1) {
             std::cout << "[LagrangianAuditor] ⚠️ Energy violation: ΔE=" 
                       << relative_change * 100 << "% (threshold " 
@@ -138,7 +141,6 @@ bool LagrangianAuditor::auditEnergyConservation(const CanonicalState& current_st
         }
     }
     
-    // Обновляем reference с учётом EMA (медленно следуем за системой)
     reference_energy_ = reference_energy_ * 0.995 + current_energy * 0.005;
     
     return conserved;

@@ -155,6 +155,11 @@ void HttpServer::handleGetRequest(const std::string& path, std::string& response
         std::lock_guard<std::mutex> lock(data_mutex_);
         response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + apiHandlers_->handleMetrics();
     }
+    else if (path == "/api/selfsignals") {
+        auto snap = nfs_->getSelfSignalSampler().last();
+        response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" + 
+                nlohmann::json(snap.toVector()).dump();
+    }
     else if (path == "/api/events") {
         response = "HTTP/1.1 200 OK\r\n"
                    "Content-Type: text/event-stream\r\n"

@@ -2,8 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Agent Audit - Dashboard</title>
+    <title>Neural Agent Audit - iPhone Monitor</title>
     <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -12,8 +11,8 @@
     <aside class="sidebar">
         <div class="logo">Neural Audit</div>
         <nav class="nav">
-            <a href="/" class="nav-item active">Dashboard</a>
-            <a href="/agents.html" class="nav-item">Agents</a>
+            <a href="/" class="nav-item">Dashboard</a>
+            <a href="/agents.html" class="nav-item active">Agents</a>
             <a href="/auditor.html" class="nav-item">Auditor</a>
             <a href="/analytics.html" class="nav-item">Analytics</a>
         </nav>
@@ -22,142 +21,245 @@
     <main class="content">
         <header class="topbar">
             <div>
-                <h1>System Dashboard</h1>
-                <p>Real-time AI safety monitoring</p>
+                <h1>iPhone Price Monitor</h1>
+                <p>Алматы / Астана - розничный аналитик</p>
             </div>
             <div class="live-status">
-                <span class="dot"></span>
-                Live
+                <span class="dot" id="live-dot"></span>
+                <span id="live-status">Connecting...</span>
             </div>
         </header>
 
+        <!-- KPI Карточки -->
         <section class="kpi-grid">
             <div class="kpi-card">
-                <span class="label">Hallucination Risk</span>
-                <h2 id="risk-value">0%</h2>
-                <div class="risk-indicator">
-                    <div class="risk-dot" id="risk-dot" style="background: #71717a;"></div>
-                    <span id="risk-text">Low Risk</span>
-                </div>
+                <span class="label">USD/KZT</span>
+                <h2 id="usd-rate">--</h2>
+                <div class="trend" id="usd-trend">--</div>
             </div>
             <div class="kpi-card">
-                <span class="label">Energy Error</span>
-                <h2 id="energy-error-value">0%</h2>
-                <div class="progress-bar"><div class="progress-fill risk" id="energy-bar" style="width:0%"></div></div>
+                <span class="label">EUR/KZT</span>
+                <h2 id="eur-rate">--</h2>
+                <div class="trend" id="eur-trend">--</div>
             </div>
             <div class="kpi-card">
-                <span class="label">Entropy</span>
-                <h2 id="entropy-value">0%</h2>
-                <div class="trend" id="entropy-trend">--</div>
+                <span class="label">Total Records</span>
+                <h2 id="total-records">0</h2>
             </div>
             <div class="kpi-card">
-                <span class="label">Quality</span>
-                <h2 id="quality-value">0%</h2>
-                <div class="trend trend-up" id="quality-trend">--</div>
+                <span class="label">Last Update</span>
+                <h2 id="last-update">--</h2>
             </div>
         </section>
 
-        <section class="dashboard-grid">
-            <div class="system-card">
-                <div class="system-card-header">System Status</div>
-                <div class="system-card-content">
-                    <div class="system-row">
-                        <span>Environment</span>
-                        <span id="env-status" class="badge neutral">WAITING</span>
-                    </div>
-                    <div class="system-row">
-                        <span>Agent Status</span>
-                        <span id="agent-status" class="badge neutral">-</span>
-                    </div>
-                    <div class="system-row">
-                        <span>Active Session</span>
-                        <span id="session-id">-</span>
-                    </div>
-                    <div class="system-row">
-                        <span>Temperature</span>
-                        <span id="temperature">1.00</span>
-                    </div>
-                </div>
+        <!-- Цены -->
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <span class="title">Актуальные цены</span>
+                <button onclick="refreshPrices()" class="primary" style="padding: 4px 12px;">🔄 Обновить</button>
+                <button onclick="runAgentNow()" class="success" style="padding: 4px 12px;">▶ Запустить сбор</button>
             </div>
-
-            <div class="system-card">
-                <div class="system-card-header">Memory</div>
-                <div class="system-card-content">
-                    <div class="system-row">
-                        <span>STM</span>
-                        <span id="stm-size">0/256</span>
-                    </div>
-                    <div class="system-row">
-                        <span>LTM</span>
-                        <span id="ltm-size">0/2048</span>
-                    </div>
-                    <div class="system-row">
-                        <span>Violations</span>
-                        <span id="violations" class="badge neutral">0</span>
-                    </div>
-                </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Магазин</th><th>Модель</th><th>Объём</th><th>Цена (тг)</th><th>Время</th></tr>
+                    </thead>
+                    <tbody id="prices-table"></tbody>
+                </table>
             </div>
-        </section>
+        </div>
 
-        <div class="footer">Neural Agent Audit System v3.0 | Real-time AI Agent Observability</div>
+        <!-- Статистика -->
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <span class="title">Рыночная статистика</span>
+                <span class="subtitle">Минимальные цены по моделям</span>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Модель</th><th>Объём</th><th>Мин. цена</th><th>Средняя</th><th>Макс. цена</th><th>Магазинов</th></tr>
+                    </thead>
+                    <tbody id="stats-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Отчёты -->
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <span class="title">Отчёты</span>
+                <button onclick="loadReports()" class="primary" style="padding: 4px 12px;">📄 Обновить</button>
+            </div>
+            <div class="reports-list" id="reports-list"></div>
+        </div>
+
+        <!-- Отображение отчёта -->
+        <div class="chart-card" id="report-viewer" style="display: none;">
+            <div class="chart-card-header">
+                <span class="title" id="report-title">Отчёт</span>
+                <button onclick="closeReport()" class="danger" style="padding: 4px 12px;">✖ Закрыть</button>
+            </div>
+            <div class="report-content" id="report-content" style="background: #1e1e2e; padding: 16px; border-radius: 12px; font-family: monospace; white-space: pre-wrap;"></div>
+        </div>
+
+        <!-- Логи -->
+        <div class="logs-container">
+            <div class="logs-header">Логи агента</div>
+            <div class="logs-content" id="agent-logs">
+                <div class="log-entry info">Агент готов. Нажмите 'Запустить сбор' для начала...</div>
+            </div>
+        </div>
+
+        <div class="footer">iPhone Price Monitor v1.0 | Автоматический сбор цен каждый час</div>
     </main>
 </div>
 
 <script>
-    let eventSource = null;
+    let refreshInterval = null;
     
-    function updateRiskIndicator(risk) {
-        const dot = document.getElementById('risk-dot');
-        const text = document.getElementById('risk-text');
-        if (risk > 0.7) {
-            dot.style.background = '#ef4444';
-            text.textContent = 'High Risk';
-            text.style.color = '#ef4444';
-        } else if (risk > 0.3) {
-            dot.style.background = '#f59e0b';
-            text.textContent = 'Medium Risk';
-            text.style.color = '#f59e0b';
-        } else {
-            dot.style.background = '#22c55e';
-            text.textContent = 'Low Risk';
-            text.style.color = '#22c55e';
+    function addLog(type, message) {
+        let container = document.getElementById('agent-logs');
+        let entry = document.createElement('div');
+        entry.className = 'log-entry ' + type;
+        entry.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+        container.insertBefore(entry, container.firstChild);
+        while(container.children.length > 100) container.removeChild(container.lastChild);
+    }
+    
+    async function refreshPrices() {
+        try {
+            const resp = await fetch('/api/agent/latest_prices');
+            const data = await resp.json();
+            
+            let html = '';
+            for (let p of data.prices.slice(0, 20)) {
+                html += `<tr>
+                    <td>${p.shop}</td>
+                    <td>${p.model}</td>
+                    <td>${p.storage}</td>
+                    <td><strong>${p.price.toLocaleString()}</strong> ₸</td>
+                    <td>${new Date(p.timestamp).toLocaleTimeString()}</td>
+                </tr>`;
+            }
+            document.getElementById('prices-table').innerHTML = html || '<tr><td colspan="5">Нет данных</td></tr>';
+            addLog('info', `Загружено ${data.prices.length} цен`);
+        } catch(e) {
+            addLog('error', 'Ошибка загрузки цен: ' + e.message);
         }
     }
     
-    function initEventSource() {
-        if (eventSource) eventSource.close();
-        eventSource = new EventSource('/api/events');
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const risk = data.risk || 0;
+    async function loadStats() {
+        try {
+            const resp = await fetch('/api/agent/market_stats?days=1');
+            const data = await resp.json();
             
-            document.getElementById('env-status').innerHTML = data.agent_running ? '<span class="badge success">ACTIVE</span>' : '<span class="badge neutral">WAITING</span>';
-            const agentStatusHtml = risk > 0.7 ? '<span class="badge danger">DANGER</span>' : (risk > 0.3 ? '<span class="badge warning">WARNING</span>' : '<span class="badge success">OK</span>');
-            document.getElementById('agent-status').innerHTML = agentStatusHtml;
-            document.getElementById('session-id').innerText = data.session_id || '-';
-            document.getElementById('risk-value').innerHTML = Math.round(risk * 100) + '%';
-            updateRiskIndicator(risk);
-            document.getElementById('energy-error-value').innerHTML = Math.round((data.energy_error || 0) * 100) + '%';
-            document.getElementById('energy-bar').style.width = (data.energy_error || 0) * 100 + '%';
-            document.getElementById('entropy-value').innerHTML = Math.round((data.entropy || 0.5) * 100) + '%';
-            document.getElementById('quality-value').innerHTML = Math.round((data.quality || 0.5) * 100) + '%';
-            document.getElementById('temperature').innerText = (data.temperature || 1.0).toFixed(2);
-            document.getElementById('stm-size').innerHTML = (data.stm_size || 0) + '/256';
-            document.getElementById('ltm-size').innerHTML = (data.ltm_size || 0) + '/2048';
-            document.getElementById('violations').innerHTML = '<span class="badge ' + ((data.violations || 0) > 10 ? 'danger' : 'neutral') + '">' + (data.violations || 0) + '</span>';
-        };
-        eventSource.onerror = () => setTimeout(initEventSource, 3000);
+            let html = '';
+            for (let s of data.stats) {
+                html += `<tr>
+                    <td>${s.model}</td>
+                    <td>${s.storage}</td>
+                    <td><strong>${s.min_price.toLocaleString()}</strong> ₸</td>
+                    <td>${s.avg_price.toLocaleString()} ₸</td>
+                    <td>${s.max_price.toLocaleString()} ₸</td>
+                    <td>-</td>
+                </tr>`;
+            }
+            document.getElementById('stats-table').innerHTML = html || '<tr><td colspan="6">Нет данных</td></tr>';
+        } catch(e) {
+            console.error('Stats error:', e);
+        }
     }
     
-    function fetchStatus() {
-        fetch('/api/status').then(r => r.json()).then(d => {
-            if (d.energy_error) document.getElementById('energy-bar').style.width = d.energy_error * 100 + '%';
-        }).catch(e => {});
+    async function loadStatus() {
+        try {
+            const resp = await fetch('/api/agent/status');
+            const data = await resp.json();
+            
+            if (data.status === 'active') {
+                document.getElementById('usd-rate').innerHTML = data.usd_rate?.toFixed(2) || '--';
+                document.getElementById('eur-rate').innerHTML = data.eur_rate?.toFixed(2) || '--';
+                document.getElementById('total-records').innerHTML = data.total_records || 0;
+                document.getElementById('last-update').innerHTML = new Date(data.timestamp).toLocaleTimeString();
+                document.getElementById('live-dot').style.background = '#22c55e';
+                document.getElementById('live-status').innerHTML = 'Active';
+            } else {
+                document.getElementById('live-dot').style.background = '#ef4444';
+                document.getElementById('live-status').innerHTML = 'Stopped';
+            }
+        } catch(e) {
+            document.getElementById('live-dot').style.background = '#ef4444';
+            document.getElementById('live-status').innerHTML = 'Offline';
+        }
     }
     
-    initEventSource();
-    fetchStatus();
-    setInterval(fetchStatus, 2000);
+    async function loadReports() {
+        try {
+            const resp = await fetch('/api/agent/reports');
+            const data = await resp.json();
+            
+            let html = '<ul style="list-style: none; padding: 0;">';
+            for (let r of data.reports) {
+                html += `<li style="padding: 8px; border-bottom: 1px solid #27272a;">
+                    <span>📄 ${r.name}</span>
+                    <span style="float: right;">
+                        <button onclick="viewReport('${r.name}')" class="primary" style="padding: 2px 8px;">Просмотр</button>
+                    </span>
+                </li>`;
+            }
+            html += '</ul>';
+            document.getElementById('reports-list').innerHTML = html || '<p>Нет отчётов</p>';
+        } catch(e) {
+            console.error('Reports error:', e);
+        }
+    }
+    
+    async function viewReport(filename) {
+        try {
+            const resp = await fetch(`/api/agent/report/${filename}`);
+            const data = await resp.json();
+            
+            if (data.content) {
+                document.getElementById('report-title').innerHTML = filename;
+                document.getElementById('report-content').innerHTML = data.content;
+                document.getElementById('report-viewer').style.display = 'block';
+                addLog('info', `Открыт отчёт: ${filename}`);
+            }
+        } catch(e) {
+            addLog('error', 'Ошибка загрузки отчёта: ' + e.message);
+        }
+    }
+    
+    function closeReport() {
+        document.getElementById('report-viewer').style.display = 'none';
+    }
+    
+    async function runAgentNow() {
+        addLog('info', 'Запуск сбора данных...');
+        try {
+            const resp = await fetch('/api/agent/run_now', { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                addLog('success', 'Сбор данных завершён');
+                setTimeout(() => { refreshPrices(); loadStats(); loadReports(); }, 3000);
+            } else {
+                addLog('error', 'Ошибка: ' + data.error);
+            }
+        } catch(e) {
+            addLog('error', 'Ошибка запуска: ' + e.message);
+        }
+    }
+    
+    // Инициализация
+    refreshPrices();
+    loadStats();
+    loadStatus();
+    loadReports();
+    
+    setInterval(refreshPrices, 30000);
+    setInterval(loadStats, 60000);
+    setInterval(loadStatus, 5000);
+    setInterval(loadReports, 60000);
 </script>
 </body>
 </html>

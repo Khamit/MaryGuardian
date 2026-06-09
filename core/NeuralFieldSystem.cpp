@@ -212,7 +212,7 @@ void NeuralFieldSystem::step(float external_reward, int stepNumber) {
         canonical_state_ = lagrangian_auditor_.toCanonical(groups, interWeights, dt_);
         
         // Аудируем сохранение энергии
-        bool energy_conserved = lagrangian_auditor_.auditEnergyConservation(canonical_state_, dt_);
+        bool energy_conserved = lagrangian_auditor_.auditEnergyConservation(canonical_state_, interWeights, dt_);
         
         if (!energy_conserved && lagrangian_auditor_.getConfig().auto_correct) {
             // Корректируем состояние

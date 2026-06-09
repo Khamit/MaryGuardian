@@ -60,6 +60,64 @@ struct AttentionMechanism {
     }
 };
 
+// НУЖНО ДОБАВИТЬ в NeuralFieldSystem.hpp:
+
+struct AgentMetrics {
+    // Trajectory Metrics
+    double action_validity_rate = 0.0;      // AVR
+    double tool_success_rate = 0.0;          // TSR
+    double tool_result_grounding = 0.0;      // TRG
+    double plan_execute_divergence = 0.0;    // PED
+    double recovery_rate = 0.0;              // RR
+    
+    // Grounding Metrics
+    double context_utilization_rate = 0.0;   // CUR
+    double retrieval_precision = 0.0;
+    double retrieval_recall = 0.0;
+    double attribution_score = 0.0;          // AS
+    double unsupported_claim_rate = 0.0;     // UCR
+    
+    // Calibration Metrics
+    double expected_calibration_error = 0.0; // ECE
+    double selective_risk = 0.0;
+    double uncertainty_gap = 0.0;
+    
+    // Multi-Agent Metrics
+    double inter_agent_consistency = 0.0;    // IAC
+    double critic_correction_rate = 0.0;     // CCR
+    double debate_convergence_rate = 0.0;
+    double policy_compliance_rate = 0.0;     // PCR
+    
+    // Stability Metrics
+    double trajectory_entropy = 0.0;         // TE
+    double state_drift = 0.0;                // SD
+    double looping_rate = 0.0;
+    double dead_end_probability = 0.0;
+    
+    // Production Metrics
+    double cost_per_successful_task = 0.0;   // CST
+    double latency_to_resolution = 0.0;      // LTR
+    double tool_call_efficiency = 0.0;       // TCE
+    
+    void toJson(nlohmann::json& j) const {
+        j["AVR"] = action_validity_rate;
+        j["TSR"] = tool_success_rate;
+        j["TRG"] = tool_result_grounding;
+        j["PED"] = plan_execute_divergence;
+        j["RR"] = recovery_rate;
+        j["CUR"] = context_utilization_rate;
+        j["AS"] = attribution_score;
+        j["UCR"] = unsupported_claim_rate;
+        j["ECE"] = expected_calibration_error;
+        j["IAC"] = inter_agent_consistency;
+        j["PCR"] = policy_compliance_rate;
+        j["TE"] = trajectory_entropy;
+        j["SD"] = state_drift;
+        j["LTR"] = latency_to_resolution;
+        j["TCE"] = tool_call_efficiency;
+    }
+};
+
 // ──────────────────────────────────────────────────────────────────────────────
 // NeuralFieldSystem — новая версия без орбит
 // ──────────────────────────────────────────────────────────────────────────────
@@ -194,6 +252,8 @@ public:
     const LagrangianAuditor& getLagrangianAuditor() const { return lagrangian_auditor_; }
     LagrangianAuditor& getLagrangianAuditorNonConst() { return lagrangian_auditor_; }
     const CanonicalState& getCanonicalState() const { return canonical_state_; }
+    const SelfSignalSampler& getSelfSignalSampler() const { return self_sampler_; }
+    SelfSignalSampler& getSelfSignalSamplerNonConst() { return self_sampler_; }
 
     // Потокобезопасность
     void lock()   { system_mutex_.lock(); }
@@ -249,6 +309,8 @@ public:
     SystemSnapshot getSystemSnapshot() const {
         SystemSnapshot snap;
         snap.energy = lagrangian_auditor_.getReferenceEnergy();
+        snap.kinetic = lagrangian_auditor_.getLastKinetic();    
+        snap.potential = lagrangian_auditor_.getLastPotential();
         snap.energy_error = lagrangian_auditor_.getEnergyError();
         snap.violations = static_cast<int>(lagrangian_auditor_.getConservationViolations());
         snap.entropy = getUnifiedEntropy();

@@ -16,6 +16,7 @@ ApiHandlers::ApiHandlers(NeuralFieldSystem* nfs, AgentAuditBridge* auditor, cons
 std::string ApiHandlers::handleStatus() {
     std::string status_file = workspace_ + "/agent_status.json";
     std::ifstream file(status_file);
+    if (!nfs_) return R"({"status":"error"})";
     if (file.is_open()) {
         std::stringstream buffer;
         buffer << file.rdbuf();
@@ -25,24 +26,25 @@ std::string ApiHandlers::handleStatus() {
     if (!auditor_) {
         return R"({"status":"waiting","risk":0,"entropy":0.5,"quality":0.5,"surprise":0})";
     }
-    
+    auto snap = nfs_->getSystemSnapshot();
     auto& session = auditor_->getCurrentSession();
-    nlohmann::json j;
+
+        nlohmann::json j;
     j["status"] = "active";
     j["session_id"] = session.session_id;
     j["total_steps"] = session.total_steps;
-    j["accumulated_risk"] = session.accumulated_risk;
-    j["avg_entropy"] = session.average_entropy;
     j["risk"] = auditor_->getCurrentHallucinationRisk();
-    j["entropy"] = auditor_->getCurrentEntropy();
-    j["quality"] = 0.7 - j["risk"].get<float>();
-    j["surprise"] = j["risk"].get<float>() * 0.8;
-    j["stm_size"] = 0;
-    j["ltm_size"] = 0;
-    j["ltm_avg_importance"] = 0.8;
-    j["is_dangerous_mode"] = j["risk"].get<float>() > 0.7;
-    j["successful_actions"] = session.successful_actions;
-    j["blocked_actions"] = session.blocked_actions;
+    j["entropy"] = snap.entropy;                    // из модели
+    j["quality"] = snap.quality;                    // из модели (lastSignal_.quality)
+    j["surprise"] = snap.surprise;                  // из модели
+    j["energy"] = snap.energy;                      // из LagrangianAuditor
+    j["energy_error"] = snap.energy_error;          // реальная ошибка
+    j["temperature"] = snap.temperature;            // реальная температура
+    j["stm_size"] = snap.stm_size;                  // реальный размер STM
+    j["ltm_size"] = snap.ltm_size;                  // реальный размер LTM
+    j["violations"] = snap.violations;              // реальные нарушения
+    j["is_dangerous_mode"] = (snap.entropy > 0.7);
+    
     return j.dump();
 }
 
@@ -384,36 +386,32 @@ std::string ApiHandlers::handleMetrics() {
 nlohmann::json ApiHandlers::getEventData() {
     nlohmann::json event;
     
-    if (auditor_) {
-        auto& session = auditor_->getCurrentSession();
-        event["type"] = "status";
-        event["total_steps"] = session.total_steps;
-        event["risk"] = auditor_->getCurrentHallucinationRisk();
-        event["entropy"] = auditor_->getCurrentEntropy();
-        event["successful_actions"] = session.successful_actions;
-        event["blocked_actions"] = session.blocked_actions;
-        event["accumulated_risk"] = session.accumulated_risk;
-        
-        auto last = auditor_->getLastActionInfo();
-        event["last_action"] = {
-            {"action", last.action},
-            {"risk", last.risk},
-            {"allowed", last.allowed}
-        };
-    }
-    
     if (nfs_) {
-        event["energy_error"] = nfs_->getLagrangianAuditor().getEnergyError();
-        event["violations"] = nfs_->getLagrangianAuditor().getConservationViolations();
-        event["audit_enabled"] = nfs_->isEnergyAuditEnabled();
-        event["energy"] = nfs_->getLagrangianAuditor().getReferenceEnergy();
+        auto snap = nfs_->getSystemSnapshot();  // ИСТОЧНИК ПРАВДЫ
         
-        auto snap = nfs_->getSystemSnapshot();
+        event["energy_error"] = snap.energy_error;
+        event["violations"] = snap.violations;
         event["entropy"] = snap.entropy;
         event["quality"] = snap.quality;
         event["temperature"] = snap.temperature;
         event["stm_size"] = snap.stm_size;
         event["ltm_size"] = snap.ltm_size;
+        event["surprise"] = snap.surprise;
+        event["system_energy"] = snap.energy;
+        
+        // Данные от SelfSignalSampler (32 сигнала)
+        auto& sampler = nfs_->getSelfSignalSampler();  // Нужно добавить геттер
+        auto& lastSnap = sampler.last();
+        event["self_sensory_rate"] = lastSnap.sensory_avg_rate;
+        event["self_motor_rate"] = lastSnap.motor_avg_rate;
+        event["self_entropy"] = lastSnap.system_entropy;
+        event["self_apoptosis"] = lastSnap.apoptosis_rate;
+        event["self_neurogenesis"] = lastSnap.neurogenesis_rate;
+    }
+    
+    if (auditor_) {
+        event["risk"] = auditor_->getCurrentHallucinationRisk();
+        event["session_id"] = auditor_->getCurrentSession().session_id;
     }
     
     return event;

@@ -99,7 +99,9 @@ public:
      * @param dt Шаг времени
      * @return true если энергия сохраняется, false если галлюцинация
      */
-    bool auditEnergyConservation(const CanonicalState& current_state, double dt);
+    bool auditEnergyConservation(const CanonicalState& current_state, 
+                             const std::vector<std::vector<double>>& interWeights, 
+                             double dt);
     
     /**
      * @brief Полный аудит действия агента
@@ -140,6 +142,12 @@ public:
     double getEnergyError() const { return energy_error_ema_; }
     double getConservationViolations() const { return conservation_violations_; }
     const std::deque<double>& getEnergyHistory() const { return energy_history_; }
+
+    // НОВЫЕ ГЕТТЕРЫ:
+    double getLastKinetic() const { return last_kinetic_; }
+    double getLastPotential() const { return last_potential_; }
+    double getLastTotalEnergy() const { return last_total_energy_; }
+    const CanonicalState& getLastState() const { return last_state_; }
     
     // Сброс
     void reset();
@@ -158,6 +166,12 @@ private:
     
     std::deque<double> energy_history_;
     std::deque<double> momentum_history_;
+
+    // НОВЫЕ ПОЛЯ ДЛЯ ХРАНЕНИЯ ПОСЛЕДНИХ ЗНАЧЕНИЙ:
+    double last_kinetic_ = 0.0;
+    double last_potential_ = 0.0;
+    double last_total_energy_ = 0.0;
+    CanonicalState last_state_;
     
     // Вспомогательные методы
     double computeKineticEnergy(const CanonicalState& state) const;
