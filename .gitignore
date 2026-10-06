@@ -2,8 +2,7 @@
 *.o
 *.d
 MaryGuardian
-guardian_test
-third_party/llama.cpp/build/
+third_party/llama.cpp/
 
 # User data - NEVER commit
 mg_workspace/
