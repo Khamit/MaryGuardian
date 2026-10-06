@@ -168,7 +168,7 @@ Please do **not** open a public issue for vulnerabilities. Use GitHub's private
 ## License
 
 MaryGuardian is licensed under the **GNU Affero General Public License v3.0 or later** — see [LICENSE](LICENSE).
-Copyright © `<YEAR> <YOUR NAME>`.
+Copyright © `<2026> <Khamit>`.
 
 It links [MuPDF](https://mupdf.com/), which is itself AGPL-3.0 (with a separate commercial license from Artifex),
 so the combined program is distributed under the AGPL. Other components:
