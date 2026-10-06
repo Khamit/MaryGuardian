@@ -1,23 +1,37 @@
-# build
+# Build
 *.o
 *.d
 MaryGuardian
 guardian_test
 third_party/llama.cpp/build/
 
-# user data — NEVER commit
+# User data - NEVER commit
 mg_workspace/
 docs/
 local/
 node_modules/
+
+# Build artifacts
+build/
+*.o
+*.d
+*.a
+*.so
+*.dylib
+*.exe
+
+# Models
 models/
-old_version/
+*.gguf
+
+# Database
 *.db
 *.db-wal
 *.db-shm
 audit.jsonl
 
-# models
-*.gguf
+# Old code
+old_version/
 
+# macOS
 .DS_Store
