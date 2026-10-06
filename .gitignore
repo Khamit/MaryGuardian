@@ -1,69 +1,22 @@
-# Build directories
-build/
-bin/
-out/
-*.exe
-*.app
-
-# CMake
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
-
-# Compiler outputs
+# build
 *.o
-*.obj
-*.a
-*.lib
-*.dll
-*.so
-*.dylib
+*.d
+MaryGuardian
+guardian_test
+third_party/llama.cpp/build/
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs and data
-*.log
-*.csv
-*.dat
-*.txt
-start.txt
-simulation_statistics.csv
-phi_sfml_dump.csv
-dump*
-dump/
-backups*
-backup_*
+# user data — NEVER commit
+mg_workspace/
+docs/
 local/
+node_modules/
+old_version/
+*.db
+*.db-wal
+*.db-shm
+audit.jsonl
 
-# Dependencies
-deps/
-third_party/
+# models
+*.gguf
 
-# Temporary files
-temp/
-tmp/
-
-# macOS
-*.dSYM/
-
-# Windows
-*.vcxproj
-*.sln
-*.vcxproj.filters
+.DS_Store

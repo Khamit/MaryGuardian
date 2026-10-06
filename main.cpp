@@ -1,186 +1,119 @@
-// main.cpp - ИСПРАВЛЕННАЯ ВЕРСИЯ
-#include "core/NeuralFieldSystem.hpp"
-#include "core/AgentAuditBridge.hpp"
+#include "core/Guardian.hpp"
+#include "core/ModelRuntime.hpp"
+#include "core/Verifier.hpp"
+#include "task/BookkeeperTask.hpp"
 #include "server/HttpServer.hpp"
-#include "server/ApiHandlers.hpp"
-#include "server/AgentRegistry.hpp"
-#include "application/AgentConfig.hpp"
+
+#include "core/Db.hpp"
+#include "core/Indexer.hpp"
+#include "core/Library.hpp"
+
 #include <iostream>
-#include <signal.h>
 #include <filesystem>
-#include <atomic>
 #include <thread>
+#include <chrono>
+#include <atomic>
+#include <csignal>
+#include <unistd.h>
 
-NeuralFieldSystem* g_nfs = nullptr;
-AgentAuditBridge* g_auditor = nullptr;
-HttpServer* g_server = nullptr;
 std::atomic<bool> g_running(true);
-std::atomic<bool> g_shutdown_initiated(false);  // Защита от двойного завершения
 
-void signalHandler(int signum) {
-    // Защита от повторных вызовов
-    static std::atomic_flag signal_handled = ATOMIC_FLAG_INIT;
-    if (signal_handled.test_and_set()) {
-        // Повторный сигнал - принудительный выход
-        std::cout << "\n[Main] Force exit..." << std::endl;
-        std::_Exit(1);
-    }
-    
-    std::cout << "\n[Main] Received signal " << signum << ", shutting down..." << std::endl;
+static void signalHandler(int) {
+    static const char msg[] = "\n[Main] Stopping...\n";
+    (void)!write(STDOUT_FILENO, msg, sizeof msg - 1);   // cout в обработчике сигнала небезопасен
     g_running = false;
-    
-    // НЕ вызываем endSession и saveMemoryState здесь - они в основном потоке
-    // Только устанавливаем флаг для остановки
-    if (g_server) {
-        g_server->stop();  // Это безопасно вызвать из сигнала
-    }
-}
-
-void printBanner() {
-    std::cout << R"(
-╔══════════════════════════════════════════════════════════════════╗
-║   Neural Agent Audit System v3.0                                 ║
-║   Multi-Agent Audit & Orchestration Platform                     ║
-║   API: http://localhost:8080                                     ║
-╚══════════════════════════════════════════════════════════════════╝
-    )" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
-    signal(SIGPIPE, SIG_IGN);  // Игнорируем broken pipe
+    // sigaction без SA_RESTART: Ctrl+C прерывает getline.
+    struct sigaction sa{};
+    sa.sa_handler = signalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT,  &sa, nullptr);
+    sigaction(SIGTERM, &sa, nullptr);
+    signal(SIGPIPE, SIG_IGN);   // клиент закрыл сокет — не падаем
+
+    std::string workspace  = "mg_workspace";
+    int         port       = 8080;
+    std::string model_path;
+    std::string ocr_model;  
+    std::string ocr_mmproj; 
     
-    printBanner();
-    
-    // Парсинг аргументов
-    std::string workspace = "agent_workspace";
-    int web_port = 8080;
-    
-    for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i];
-        if (arg == "--workspace" && i + 1 < argc) workspace = argv[++i];
-        else if (arg == "--port" && i + 1 < argc) web_port = std::stoi(argv[++i]);
-        else if (arg == "--help") {
-            std::cout << "Usage: ./advanced_neural_system --workspace <path> --port <port>" << std::endl;
-            return 0;
+    // цикл разбора аргументов
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        try {
+            if (a == "--workspace" && i + 1 < argc)  workspace  = argv[++i];
+            else if (a == "--port" && i + 1 < argc)  port       = std::stoi(argv[++i]);
+            else if (a == "--model" && i + 1 < argc) model_path = argv[++i];
+            else if (a == "--ocr-model" && i + 1 < argc) ocr_model = argv[++i];       // <-- ДОБАВИТЬ
+            else if (a == "--ocr-mmproj" && i + 1 < argc) ocr_mmproj = argv[++i];     // <-- ДОБАВИТЬ
+        } catch (const std::exception&) {
+            std::cerr << "[Main] Invalid value for " << a << "\n";
+            return 2;
         }
     }
-    
-    // Инициализация
-    auto& config = AgentConfig::getInstance();
-    config.setWorkingDirectory(workspace);
-    config.loadFromFile();
-    
-    // Создаём директории
-    std::filesystem::create_directories(workspace + "/logs/raw");
-    std::filesystem::create_directories(workspace + "/logs/aggregated");
-    std::filesystem::create_directories(workspace + "/memory");
-    std::filesystem::create_directories("web");
-    
-    // Инициализация AgentRegistry
-    AgentRegistryInitializer registryInit(workspace);
-    
-    // Инициализация нейросети
-    NeuralFieldSystem nfs(0.01);
-    g_nfs = &nfs;
-    
-    std::mt19937 rng(std::random_device{}());
-    nfs.initialize(rng);
-    nfs.setOperatingMode(OperatingMode::NORMAL);
-    
-    // Инициализация аудитора
-    AgentAuditBridge auditor(nfs);
-    g_auditor = &auditor;
-    auditor.setWorkingDirectory(workspace);
-    
-    // Загрузка ограничений
-    for (const auto& constraint : config.getConstraints()) {
-        auditor.enableConstraint(constraint, true);
+
+    std::filesystem::create_directories(workspace + "/logs");
+    std::filesystem::create_directories(workspace + "/output");
+    std::filesystem::create_directories(workspace + "/web");
+
+    Guardian guardian(workspace + "/logs/audit.jsonl", workspace + "/inbox", workspace + "/output");
+    mary::ModelRuntime model;
+    mary::Verifier    verifier;
+    mary::BookkeeperTask task(model, guardian, verifier);
+
+    mary::Db db(workspace + "/library.db");
+    if (!db.ok()) { std::cerr << "[Main] Cannot open library.db\n"; return 1; }
+    // Передаем пути к OCR в Indexer
+    mary::Indexer indexer(db, guardian, model, verifier, workspace + "/inbox", ocr_model, ocr_mmproj);
+    mary::Library library(db, guardian, model);
+
+    if (!model_path.empty()) {
+        if (!std::filesystem::exists(model_path)) {
+            std::cerr << "[Main] WARNING: model file not found: " << model_path << "\n";
+        } else if (model.loadModel(model_path, 8192, 99)) {
+            std::cout << "[Main] Model loaded: " << model_path << "\n";
+        } else {
+            std::cerr << "[Main] WARNING: model not loaded — draft will fail\n";
+        }
+    } else {
+        std::cout << "[Main] No --model specified. Draft unavailable.\n";
     }
-    auditor.loadMemoryState();
-    
-    // Запуск HTTP сервера
-    HttpServer server(web_port, workspace, &nfs, &auditor);
-    g_server = &server;
+
+        HttpServer server(port, task, guardian, model, indexer, library, workspace);
     server.setRunningFlag(&g_running);
-    
+
     if (!server.start()) {
-        std::cerr << "[Main] Failed to start HTTP server" << std::endl;
+        std::cerr << "[Main] Failed to start HTTP server\n";
         return 1;
     }
     
-    // Запуск сессии
-    std::string session_id = "session_" + std::to_string(std::time(nullptr));
-    auditor.startSession(session_id, "neural_audit");
-    
-    std::cout << "\n[Main] System ready!" << std::endl;
-    std::cout << "[Main] Admin panel: http://localhost:" << web_port << std::endl;
-    std::cout << "[Main] API: http://localhost:" << web_port << "/api/" << std::endl;
-    std::cout << "[Main] Type 'quit' to exit\n" << std::endl;
-    
-    // REPL для ручных команд - ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ ЦИКЛ
-    std::string command;
-    while (g_running.load()) {
-        std::cout << "[Console] > ";
-        std::cout.flush();
-        
-        // Используем неблокирующую проверку для std::cin
-        if (!std::getline(std::cin, command)) {
-            // EOF или ошибка ввода
-            if (std::cin.eof()) {
-                // Ctrl+D - выходим
-                break;
-            }
-            std::cin.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
+    indexer.start();   // известные файлы пропускаются, новые разбираются в фоне
+
+    std::cout << "\n=========================================\n"
+              << "  MaryGuardian\n"
+              << "  UI:  http://localhost:" << port << "\n"
+              << "=========================================\n";
+
+    if (isatty(STDIN_FILENO)) {
+        std::cout << "Type 'quit' to exit\n\n";
+        std::string cmd;
+        while (g_running) {
+            std::cout << "> ";
+            std::cout.flush();
+            if (!std::getline(std::cin, cmd) || cmd == "quit" || cmd == "exit") break;
         }
-        
-        // Удаляем лишние пробелы более эффективно
-        size_t start = command.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) {
-            continue;  // Пустая строка
-        }
-        size_t end = command.find_last_not_of(" \t\r\n");
-        command = command.substr(start, end - start + 1);
-        
-        if (command == "quit" || command == "exit") {
-            break;
-        } else if (command == "status") {
-            auto& session = auditor.getCurrentSession();
-            std::cout << "Session: " << session.session_id << std::endl;
-            std::cout << "Steps: " << session.total_steps << std::endl;
-            std::cout << "Risk: " << auditor.getCurrentHallucinationRisk() << std::endl;
-            std::cout << "Entropy: " << auditor.getCurrentEntropy() << std::endl;
-        } else if (command == "agents") {
-            std::cout << AgentRegistry::getInstance().getAllAgents().dump(2) << std::endl;
-        } else if (command == "help") {
-            std::cout << "Available commands: quit, exit, status, agents, help" << std::endl;
-        } else if (!command.empty()) {
-            std::cout << "Unknown command: '" << command << "'. Type 'help' for available commands." << std::endl;
-        }
+    } else {
+        // Запуск без терминала (launchd, nohup): EOF на stdin не должен останавливать сервер.
+        while (g_running) std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
-    
-    // Завершение - только один раз
-    if (g_shutdown_initiated.exchange(true)) {
-        // Уже завершаемся
-        return 0;
-    }
-    
-    std::cout << "\n[Main] Shutting down gracefully..." << std::endl;
-    
-    // Останавливаем HTTP сервер (если ещё не остановлен)
-    if (g_server) {
-        g_server->stop();
-    }
-    
-    // Завершаем сессию аудитора и сохраняем состояние
-    if (g_auditor) {
-        g_auditor->endSession();
-        g_auditor->saveMemoryState();
-    }
-    
-    std::cout << "[Main] Goodbye!" << std::endl;
+    g_running = false;
+
+    server.stop();
+    indexer.stop();
+    model.unload();
+    std::cout << "[Main] Done.\n";
     return 0;
 }

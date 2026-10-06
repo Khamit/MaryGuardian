@@ -1,265 +1,645 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Neural Agent Audit - iPhone Monitor</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="utf-8">
+<title>Mary Guardian</title>
+<link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --input:#1e222b; --border:#2a2f3a; --border-hi:#3a4150; --text:#e6e8ec;
+          --dim:#9aa1ad; --mute:#6b7280; --accent:#4f8cff; --accent-hi:#6ea0ff; --ok:#22c55e; --ok-bg:#0f2a1a;
+          --warn:#f59e0b; --warn-bg:#2a2109; --err:#ef4444; --err-bg:#2a1010; --idle:#1f232b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--bg); color:var(--text); }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.45; }
+  .container { max-width:1280px; margin:0 auto; padding:22px 18px 60px; }
+  h1 { font-size:1.15rem; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:9px; }
+  h1 i { color:var(--accent); font-size:1.35rem; }
+  h2 { font-size:.8rem; font-weight:600; margin-bottom:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px; }
+  input[type=text], input[type=date], select, textarea { width:100%; background:var(--input); border:1px solid var(--border); border-radius:7px; color:var(--text); padding:8px 11px; font-size:.86rem; font-family:inherit; outline:none; }
+  input:focus, select:focus, textarea:focus { border-color:var(--border-hi); }
+  textarea { resize:vertical; line-height:1.5; }
+  label { display:block; font-size:.74rem; color:var(--mute); margin:10px 0 4px; text-transform:uppercase; letter-spacing:.4px; }
+  button { border:1px solid transparent; border-radius:7px; padding:8px 14px; cursor:pointer; font-size:.84rem; font-weight:500; font-family:inherit; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; color:var(--text); background:var(--input); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-primary { background:var(--accent); color:#fff; } .btn-primary:hover:not(:disabled) { background:var(--accent-hi); }
+  .btn-success { background:#1a7f37; color:#fff; }
+  .btn-outline { background:transparent; border-color:var(--border); color:var(--dim); } .btn-outline:hover:not(:disabled) { color:var(--text); border-color:var(--border-hi); }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:20px; font-size:.72rem; font-weight:500; background:var(--idle); color:var(--dim); border:1px solid var(--border); }
+  .b-ok { background:var(--ok-bg); color:var(--ok); border-color:#1d4a2e; } .b-warn { background:var(--warn-bg); color:var(--warn); border-color:#5a4210; }
+  .b-err { background:var(--err-bg); color:var(--err); border-color:#4a1a1a; }
+  .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; } .mt8 { margin-top:8px; }
+  .scanbar { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .scanbar .txt { flex:1; font-size:.84rem; color:var(--dim); min-width:200px; }
+  .bar { height:5px; background:var(--idle); border-radius:3px; overflow:hidden; flex-basis:100%; display:none; } .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .4s; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab { background:transparent; border:1px solid var(--border); color:var(--dim); }
+  .tab.active { background:var(--input); color:var(--text); border-color:var(--border-hi); }
+  .pane { display:none; } .pane.show { display:block; }
+  .lib { display:grid; grid-template-columns:230px 1fr 340px; gap:12px; align-items:start; }
+  @media (max-width:1000px) { .lib { grid-template-columns:1fr; } }
+  .side-item { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 9px; border-radius:7px; cursor:pointer; color:var(--dim); font-size:.84rem; }
+  .side-item:hover { background:var(--input); } .side-item.active { background:var(--input); color:var(--text); border:1px solid var(--border-hi); }
+  .side-item .n { color:var(--mute); font-size:.76rem; } .side-item i { font-size:.85rem; color:var(--mute); }
+  .side-h { font-size:.7rem; color:var(--mute); text-transform:uppercase; letter-spacing:.6px; margin:14px 0 4px 9px; display:flex; justify-content:space-between; padding-right:9px; }
+  .doc { padding:9px 11px; border:1px solid var(--border); border-radius:8px; margin-bottom:7px; cursor:pointer; }
+  .doc:hover { border-color:var(--border-hi); } .doc.sel { border-color:var(--accent); background:#141a26; }
+  .doc .t { font-weight:500; word-break:break-all; } .doc .m { font-size:.78rem; color:var(--dim); margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .doc .s { font-size:.78rem; color:var(--mute); margin-top:3px; }
+  .empty { text-align:center; color:var(--mute); padding:26px 0; font-style:italic; }
+  .pii-alert { background:var(--warn-bg); border:1px solid #5a4210; border-radius:7px; padding:9px 13px; margin-top:10px; font-size:.84rem; color:#fbbf24; }
+  .ocr-alert { background:var(--warn-bg); border:1px solid #5a4210; border-radius:7px; padding:9px 13px; margin-top:10px; font-size:.84rem; color:#fbbf24; }
+  table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  th { text-align:left; padding:7px 10px; border-bottom:1px solid var(--border); color:var(--mute); font-weight:600; font-size:.74rem; text-transform:uppercase; }
+  td { padding:7px 10px; border-bottom:1px solid #1c2028; color:var(--dim); } .log-ok { color:var(--ok); font-weight:600; } .log-blocked { color:var(--err); font-weight:600; }
+  .chip { display:inline-block; padding:2px 9px; margin:3px 4px 0 0; border:1px solid var(--border); border-radius:20px; font-size:.76rem; color:var(--dim); cursor:pointer; }
+  .md { background:var(--input); border:1px solid var(--border); border-radius:7px; padding:12px 16px; margin-top:8px; min-height:80px; max-height:480px; overflow-y:auto; line-height:1.6; font-size:.9rem; }
+  .md h1,.md h2,.md h3,.md h4 { text-transform:none; letter-spacing:0; color:var(--text); margin:12px 0 6px; } .md p { margin:7px 0; } .md ul,.md ol { margin:7px 0 7px 22px; }
+  .md code { background:#0f1115; padding:1px 5px; border-radius:4px; font-family:ui-monospace,Menlo,monospace; font-size:.85em; }
+  .md pre { background:#0f1115; padding:10px; border-radius:6px; overflow-x:auto; } .md table { margin:8px 0; } .md th,.md td { border:1px solid var(--border); padding:5px 9px; }
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1000; justify-content:center; align-items:center; }
+  .modal-box { background:var(--card); border:1px solid var(--border); border-radius:10px; width:90%; max-width:900px; max-height:85vh; display:flex; flex-direction:column; }
+  .modal-box header { padding:12px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .modal-box pre { padding:18px; overflow:auto; white-space:pre-wrap; font-size:.84rem; color:var(--dim); }
+  #toast { position:fixed; bottom:20px; right:20px; padding:10px 16px; border-radius:9px; background:var(--card); border:1px solid var(--border); display:none; z-index:2000; max-width:340px; font-size:.85rem; }
+  /* --- scan stepper, progress, live feedback --- */
+  .steps { display:flex; gap:6px; align-items:center; font-size:.74rem; }
+  .step { padding:2px 10px; border-radius:20px; border:1px solid var(--border); color:var(--mute); transition:all .3s; }
+  .step.done { color:var(--ok); border-color:#1d4a2e; background:var(--ok-bg); }
+  .step.active { color:var(--accent-hi); border-color:var(--accent); animation:pulse 1.2s ease-in-out infinite; }
+  .step-time { color:var(--mute); font-variant-numeric:tabular-nums; margin-left:4px; }
+  .bar.indet i { width:40% !important; animation:slide 1.1s ease-in-out infinite; }
+  .spin { display:inline-block; animation:rot 1s linear infinite; }
+  .badge.pulse { animation:pulse 1.4s ease-in-out infinite; }
+  .doc.flash { animation:flash 1.6s ease-out; }
+  /* --- Activity screen --- */
+  .stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; margin-bottom:12px; }
+  .stat { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .stat .v { font-size:1.55rem; font-weight:600; font-variant-numeric:tabular-nums; }
+  .stat .l { font-size:.72rem; color:var(--mute); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+  .stat .sub { font-size:.78rem; color:var(--dim); margin-top:6px; }
+  .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--idle); }
+  .stack i { display:block; height:100%; transition:width .6s ease; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:.78rem; color:var(--dim); }
+  .legend b { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  @keyframes slide { from { transform:translateX(-100%); } to { transform:translateX(260%); } }
+  @keyframes rot { to { transform:rotate(360deg); } }
+  @keyframes flash { from { background:#1d3a66; border-color:var(--accent); } }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
 </head>
 <body>
-<div class="app">
-    <aside class="sidebar">
-        <div class="logo">Neural Audit</div>
-        <nav class="nav">
-            <a href="/" class="nav-item">Dashboard</a>
-            <a href="/agents.html" class="nav-item active">Agents</a>
-            <a href="/auditor.html" class="nav-item">Auditor</a>
-            <a href="/analytics.html" class="nav-item">Analytics</a>
-        </nav>
-    </aside>
+<div class="container">
+  <h1><i class="bi bi-folder2-open"></i> Mary Guardian <span class="badge" id="model-badge">model</span></h1>
 
-    <main class="content">
-        <header class="topbar">
-            <div>
-                <h1>iPhone Price Monitor</h1>
-                <p>Алматы / Астана - розничный аналитик</p>
-            </div>
-            <div class="live-status">
-                <span class="dot" id="live-dot"></span>
-                <span id="live-status">Connecting...</span>
-            </div>
-        </header>
+  <div class="card scanbar">
+    <button class="btn-primary" id="btn-scan" onclick="scan()"><i class="bi bi-arrow-repeat" id="scan-ico"></i> Scan inbox</button>
+    <div class="txt" id="scan-text">Not scanned yet</div>
+    <div class="steps" id="steps"><span class="step" data-p="scanning">Scan</span><span class="step" data-p="classifying">Classify</span><span class="step" data-p="ocr">OCR</span><span class="step-time" id="elapsed"></span></div>
+    <div class="bar" id="bar"><i id="bar-fill"></i></div>
+  </div>
 
-        <!-- KPI Карточки -->
-        <section class="kpi-grid">
-            <div class="kpi-card">
-                <span class="label">USD/KZT</span>
-                <h2 id="usd-rate">--</h2>
-                <div class="trend" id="usd-trend">--</div>
-            </div>
-            <div class="kpi-card">
-                <span class="label">EUR/KZT</span>
-                <h2 id="eur-rate">--</h2>
-                <div class="trend" id="eur-trend">--</div>
-            </div>
-            <div class="kpi-card">
-                <span class="label">Total Records</span>
-                <h2 id="total-records">0</h2>
-            </div>
-            <div class="kpi-card">
-                <span class="label">Last Update</span>
-                <h2 id="last-update">--</h2>
-            </div>
-        </section>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="library">Library</button>
+    <button class="tab" data-tab="cleanup">Cleanup</button>
+    <button class="tab" data-tab="ask">Ask</button>
+    <button class="tab" data-tab="profile">Profile</button>
+    <button class="tab" data-tab="single">Single document</button>
+    <button class="tab" data-tab="activity">Activity</button>
+    <button class="tab" data-tab="audit">Audit log</button>
+  </div>
 
-        <!-- Цены -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="title">Актуальные цены</span>
-                <button onclick="refreshPrices()" class="primary" style="padding: 4px 12px;">🔄 Обновить</button>
-                <button onclick="runAgentNow()" class="success" style="padding: 4px 12px;">▶ Запустить сбор</button>
-            </div>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr><th>Магазин</th><th>Модель</th><th>Объём</th><th>Цена (тг)</th><th>Время</th></tr>
-                    </thead>
-                    <tbody id="prices-table"></tbody>
-                </table>
-            </div>
-        </div>
+  <!-- ===== Library ===== -->
+  <div class="pane show" id="pane-library">
+    <div class="lib">
+      <div class="card" id="side"></div>
+      <div>
+        <input type="text" id="search" placeholder="Search name, company, number, summary…" oninput="onSearch()">
+        <div class="mt8" id="list"></div>
+      </div>
+      <div class="card" id="detail"><div class="empty">Select a document</div></div>
+    </div>
+  </div>
 
-        <!-- Статистика -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="title">Рыночная статистика</span>
-                <span class="subtitle">Минимальные цены по моделям</span>
-            </div>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr><th>Модель</th><th>Объём</th><th>Мин. цена</th><th>Средняя</th><th>Макс. цена</th><th>Магазинов</th></tr>
-                    </thead>
-                    <tbody id="stats-table"></tbody>
-                </table>
-            </div>
-        </div>
+  <!-- ===== Cleanup ===== -->
+  <div class="pane" id="pane-cleanup"><div id="cleanup-body"></div></div>
 
-        <!-- Отчёты -->
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <span class="title">Отчёты</span>
-                <button onclick="loadReports()" class="primary" style="padding: 4px 12px;">📄 Обновить</button>
-            </div>
-            <div class="reports-list" id="reports-list"></div>
-        </div>
+  <!-- ===== Ask ===== -->
+  <div class="pane" id="pane-ask">
+    <div class="card">
+      <h2>Ask your accountant / lawyer assistant</h2>
+      <textarea id="question" rows="3" placeholder="e.g. Which invoices from Acme are still unpaid? What contracts expire this quarter?"></textarea>
+      <div class="row mt8"><button class="btn-primary" id="btn-ask" onclick="ask()"><i class="bi bi-chat-dots"></i> Ask</button><span id="ask-status" style="color:var(--dim)"></span></div>
+      <div class="md" id="answer" style="display:none"></div>
+      <div id="sources"></div>
+    </div>
+  </div>
 
-        <!-- Отображение отчёта -->
-        <div class="chart-card" id="report-viewer" style="display: none;">
-            <div class="chart-card-header">
-                <span class="title" id="report-title">Отчёт</span>
-                <button onclick="closeReport()" class="danger" style="padding: 4px 12px;">✖ Закрыть</button>
-            </div>
-            <div class="report-content" id="report-content" style="background: #1e1e2e; padding: 16px; border-radius: 12px; font-family: monospace; white-space: pre-wrap;"></div>
-        </div>
+  <!-- ===== Profile ===== -->
+  <div class="pane" id="pane-profile">
+    <div class="card" style="max-width:640px">
+      <h2>About you (stays on this computer)</h2>
+      <label>Your situation</label>
+      <select id="p-role"><option value="">—</option><option>Business owner</option><option>Employee</option><option>Accountant / bookkeeper</option><option>Individual (personal taxes and paperwork)</option></select>
+      <label>Specialty or skills</label><input type="text" id="p-specialty" placeholder="e.g. small-business bookkeeping, payroll">
+      <label>Country / tax jurisdiction</label><input type="text" id="p-country" placeholder="e.g. United States, California">
+      <label>What help do you need</label><textarea id="p-goal" rows="3" placeholder="e.g. prepare documents for annual taxes, find what I can delete"></textarea>
+      <label>Other notes for the assistant</label><textarea id="p-notes" rows="2"></textarea>
+      <div class="row mt8"><button class="btn-primary" onclick="saveProfile()"><i class="bi bi-check-lg"></i> Save</button></div>
+    </div>
+  </div>
 
-        <!-- Логи -->
-        <div class="logs-container">
-            <div class="logs-header">Логи агента</div>
-            <div class="logs-content" id="agent-logs">
-                <div class="log-entry info">Агент готов. Нажмите 'Запустить сбор' для начала...</div>
-            </div>
-        </div>
+  <!-- ===== Single document ===== -->
+  <div class="pane" id="pane-single">
+    <div class="row" style="margin-bottom:10px">
+      <span>Step: <span id="step-badge" class="badge">Idle</span></span>
+      <span id="pii-status" style="display:none" class="badge b-warn"><i class="bi bi-shield-exclamation"></i> PII</span>
+    </div>
+    <div class="card">
+      <h2>1 · Load documents</h2>
+      <select id="pick" multiple size="5"></select>
+      <input type="text" id="paths" class="mt8" placeholder="…or type file names from the inbox: invoice.pdf, contract.pdf">
+      <div class="row mt8">
+        <button class="btn-primary" onclick="upload()"><i class="bi bi-upload"></i> Load and extract text</button>
+        <span id="preview-container"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>2 · Generate a draft</h2>
+      <input type="text" id="instruction" placeholder='Task: "write a complaint letter", "summarize the charges"…'>
+      <div class="row mt8">
+        <button class="btn-primary" id="btn-draft" onclick="generateDraft()"><i class="bi bi-magic"></i> Create draft</button>
+        <span id="draft-spinner" style="display:none;color:var(--dim)">Generating…</span>
+      </div>
+      <div id="pii-alert" class="pii-alert" style="display:none">Personal data detected in the draft (ID numbers, card, email). Review before sending.</div>
+      <div class="row mt8">
+        <button class="tab active" id="tab-view" onclick="setView('view')">Preview</button>
+        <button class="tab" id="tab-edit" onclick="setView('edit')"><i class="bi bi-pencil"></i> Edit</button>
+      </div>
+      <div id="draft-preview" class="md"></div>
+      <textarea id="draft-area" rows="16" class="mt8" style="display:none"></textarea>
+    </div>
+    <div class="card">
+      <h2>3 · Review and approve</h2>
+      <div class="row">
+        <button class="btn-success" onclick="approve()"><i class="bi bi-check-lg"></i> Approve</button>
+        <button class="btn-outline" onclick="editAndApprove()"><i class="bi bi-pencil"></i> Save edits and approve</button>
+        <button class="btn-outline" id="btn-export" onclick="exportDraft()" disabled><i class="bi bi-download"></i> Save to output</button>
+      </div>
+      <div id="approve-status" class="mt8" style="font-size:.86rem"></div>
+    </div>
+  </div>
 
-        <div class="footer">iPhone Price Monitor v1.0 | Автоматический сбор цен каждый час</div>
-    </main>
+  <!-- ===== Activity ===== -->
+  <div class="pane" id="pane-activity"><div id="act-body"><div class="empty">Run a scan to see activity</div></div></div>
+
+  <!-- ===== Audit ===== -->
+  <div class="pane" id="pane-audit">
+    <div class="card"><h2>Audit log</h2>
+      <table><thead><tr><th style="width:140px">Time</th><th>Action</th><th style="width:60px">Result</th><th>Reason</th></tr></thead>
+      <tbody id="audit-body"></tbody></table></div>
+  </div>
 </div>
 
+<div class="modal" id="text-modal" onclick="if(event.target===this) closeModal()">
+  <div class="modal-box"><header><b>Extracted text</b><button class="btn-outline" onclick="closeModal()">Close</button></header><pre id="modal-text-body"></pre></div>
+</div>
+<div id="toast"></div>
+
 <script>
-    let refreshInterval = null;
-    
-    function addLog(type, message) {
-        let container = document.getElementById('agent-logs');
-        let entry = document.createElement('div');
-        entry.className = 'log-entry ' + type;
-        entry.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> ${message}`;
-        container.insertBefore(entry, container.firstChild);
-        while(container.children.length > 100) container.removeChild(container.lastChild);
+const TOKEN = '__TOKEN__';
+let TYPES = ['invoice','receipt','contract','statement','tax','letter','other'];   // заменяется списком с сервера
+let showEmpty = false;
+const tname = t => String(t || '').replace(/_/g, ' ');
+const toggleEmpty = () => { showEmpty = !showEmpty; loadSide(); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function post(url, data) {
+  try {
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-Auth-Token':TOKEN}, body:JSON.stringify(data || {}) });
+    return await r.json();
+  } catch (e) { return {ok:false, error:'Server unavailable'}; }
+}
+async function get(url) {
+  try { const r = await fetch(url, { headers:{'X-Auth-Token':TOKEN} }); return await r.json(); } catch (e) { return null; }
+}
+const lib = (op, d) => post('/api/lib/' + op, d);
+
+let toastTimer;
+function toast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block'; t.style.borderColor = ok ? '#1d4a2e' : '#4a1a1a';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 3500);
+}
+
+/* ---------- tabs ---------- */
+document.getElementById('tabs').addEventListener('click', e => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
+function showTab(name) {
+  document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('show', p.id === 'pane-' + name));
+  if (name === 'cleanup') loadCleanup();
+  if (name === 'profile') loadProfile();
+  if (name === 'audit') refreshAudit();
+  if (name === 'activity') renderActivity();
+  if (name === 'single') fillPicker();
+}
+
+/* ---------- scan status ---------- */
+let wasRunning = false, lastRev = -1, flashOn = false, flashIds = new Set(), lastStatus = null;
+
+async function scan() {
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true;
+
+  const r = await lib('scan');
+
+  if (!r.ok) {
+    toast(r.error || 'Scan failed', false);
+    btn.disabled = false;
+    return;
+  }
+
+  if (!r.started) {
+    if (r.already_running) {
+      toast('Scan is already running');
+    } else {
+      toast('Could not start scan', false);
+      btn.disabled = false;
     }
-    
-    async function refreshPrices() {
-        try {
-            const resp = await fetch('/api/agent/latest_prices');
-            const data = await resp.json();
-            
-            let html = '';
-            for (let p of data.prices.slice(0, 20)) {
-                html += `<tr>
-                    <td>${p.shop}</td>
-                    <td>${p.model}</td>
-                    <td>${p.storage}</td>
-                    <td><strong>${p.price.toLocaleString()}</strong> ₸</td>
-                    <td>${new Date(p.timestamp).toLocaleTimeString()}</td>
-                </tr>`;
-            }
-            document.getElementById('prices-table').innerHTML = html || '<tr><td colspan="5">Нет данных</td></tr>';
-            addLog('info', `Загружено ${data.prices.length} цен`);
-        } catch(e) {
-            addLog('error', 'Ошибка загрузки цен: ' + e.message);
-        }
+  }
+
+  poll();
+}
+
+async function poll() {
+  const r = await lib('scan_status');
+  if (!r.ok) return;
+
+  const run = r.running;
+  const rep = r.report;
+  trackRun(r);
+
+  document.getElementById('btn-scan').disabled = run;
+
+  const bar = document.getElementById('bar');
+  let txt;
+
+  if (run && r.phase === 'scanning') {
+    txt = 'Scanning inbox…';
+  } else if (run && r.phase === 'ocr') {
+    txt = `OCR: recognizing documents ${r.done}/${r.total}` +
+          (r.current ? ' · ' + esc(r.current) : '');
+  } else if (run && r.phase === 'classifying') {
+    txt = `Classifying documents ${r.done}/${r.total}` +
+          (r.current ? ' · ' + esc(r.current) : '');
+  } else if (run) {
+    txt = `Processing ${r.done}/${r.total}` +
+          (r.current ? ' · ' + esc(r.current) : '');
+  } else if (rep.total === 0 && !wasRunning) {
+    txt = 'Inbox is empty or not scanned yet. Put files into mg_workspace/inbox and press Scan.';
+  } else {
+    txt = `Inbox: ${rep.total} files — ${rep.known} known, ${rep.added} new, ${rep.renamed} renamed, ${rep.missing} missing` +
+          (rep.duplicates ? `, ${rep.duplicates} duplicates` : '') +
+          (rep.skipped ? `, ${rep.skipped} skipped` : '');
+  }
+
+  if (!run && r.ocr_available === false) {
+    txt += ' · OCR disabled: start with --ocr-model and --ocr-mmproj';
+  }
+
+  if (!run && r.ocr_error) {
+    txt += ' · OCR error: ' + esc(r.ocr_error);
+  }
+
+  document.getElementById('scan-text').innerHTML = txt;
+
+  bar.style.display = run ? 'block' : 'none';
+  document.getElementById('bar-fill').style.width =
+    (r.total ? Math.round(100 * r.done / r.total) : 0) + '%';
+
+  // Перечитываем данные только когда сервер сообщил, что они изменились (rev), и один раз после окончания.
+  if (r.rev !== lastRev || (wasRunning && !run)) {
+    lastRev = r.rev;
+    flashOn = true;
+    await loadSide();
+    await loadList();
+    flashOn = false;
+  }
+
+  wasRunning = run;
+}
+
+/* ---------- scan feedback + Activity screen ---------- */
+const RUNS = [];
+let runT0 = 0, seenPh = new Set(), lastRunMs = 0;
+
+function trackRun(r) {
+  const run = r.running;
+  if (run && !wasRunning) { runT0 = performance.now(); seenPh = new Set(); }
+  if (run) seenPh.add(r.phase);
+  document.getElementById('scan-ico').classList.toggle('spin', run);
+  document.querySelectorAll('#steps .step').forEach(el => {
+    const p = el.dataset.p;
+    el.classList.toggle('active', run && r.phase === p);
+    el.classList.toggle('done', run && r.phase !== p && seenPh.has(p));
+  });
+  document.getElementById('bar').classList.toggle('indet', run && r.phase === 'scanning');
+  if (!run && wasRunning) {
+    lastRunMs = performance.now() - runT0;
+    RUNS.unshift({at: new Date().toLocaleTimeString(), ms: lastRunMs, rep: r.report, st: r.stats || {}});
+    RUNS.length = Math.min(RUNS.length, 10);
+  }
+  document.getElementById('elapsed').textContent = run ? ((performance.now() - runT0) / 1000).toFixed(1) + ' s'
+                                                       : (lastRunMs ? 'last run ' + (lastRunMs / 1000).toFixed(1) + ' s' : '');
+  lastStatus = r;
+  if (document.getElementById('pane-activity').classList.contains('show')) renderActivity();
+}
+setInterval(() => { if (wasRunning) document.getElementById('elapsed').textContent = ((performance.now() - runT0) / 1000).toFixed(1) + ' s'; }, 250);
+
+function renderActivity() {
+  const r = lastStatus; if (!r || !r.report) return;
+  const rep = r.report, st = r.stats || {}, total = rep.total || 0, hashed = st.hashed || 0;
+  const pct = (a, b) => b ? Math.round(100 * a / b) : 0;
+  const card = (v, l, sub) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div><div class="sub">${sub}</div></div>`;
+  const fps = st.scan_ms ? Math.round(total / (st.scan_ms / 1000)).toLocaleString() : '—';
+  const segs = [['Unchanged', rep.known, '#22c55e'], ['New', rep.added, '#4f8cff'], ['Renamed', rep.renamed, '#a78bfa'],
+                ['Duplicates', rep.duplicates, '#f59e0b'], ['Missing', rep.missing, '#ef4444'], ['Skipped', rep.skipped, '#6b7280']];
+  const sum = segs.reduce((a, x) => a + x[1], 0);
+  const hist = RUNS.length
+    ? '<table><thead><tr><th>Finished</th><th>Duration</th><th>Files</th><th>New</th><th>Unchanged</th><th>Opened</th><th>AI calls / cache</th></tr></thead><tbody>' +
+      RUNS.map(x => `<tr><td>${esc(x.at)}</td><td>${(x.ms / 1000).toFixed(1)} s</td><td>${Number(x.rep.total)}</td><td>${Number(x.rep.added)}</td><td>${pct(x.rep.known, x.rep.total)}%</td><td>${Number(x.st.hashed || 0)}</td><td>${Number(x.st.llm_calls || 0)} / ${Number(x.st.llm_hits || 0)}</td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">No scans finished in this session yet</div>';
+  document.getElementById('act-body').innerHTML =
+    '<div class="stats">' +
+      card(total ? pct(total - hashed, total) + '%' : '—', 'Files not re-read', `${hashed} of ${total} opened and hashed; the rest were recognised from memory`) +
+      card(fps, 'Files / sec (scan phase)', st.scan_ms ? (st.scan_ms / 1000).toFixed(2) + ' s for ' + total + ' files' : 'no scan yet') +
+      card(Number(st.llm_calls || 0), 'AI calls', `${Number(st.llm_hits || 0)} answered from cache`) +
+      card(Number(st.batches || 0), 'Database commits', 'writes are grouped, up to 500 per commit') +
+      card(Number(st.classified || 0), 'Documents classified', r.running ? 'in progress…' : 'in the last run') +
+      card(Number(r.rev || 0), 'Data revision', 'lists reload only when this changes') +
+    '</div>' +
+    `<div class="card"><h2>What happened to the files in the last scan</h2><div class="stack">${segs.map(x => `<i title="${x[0]}: ${Number(x[1])}" style="width:${sum ? 100 * x[1] / sum : 0}%;background:${x[2]}"></i>`).join('')}</div>` +
+    `<div class="legend">${segs.map(x => `<span><b style="background:${x[2]}"></b>${x[0]} ${Number(x[1])}</span>`).join('')}</div></div>` +
+    `<div class="card"><h2>Scan history (this session)</h2>${hist}</div>`;
+}
+
+setInterval(poll, 1500);
+
+/* ---------- library ---------- */
+const F = {view:'all', collection_id:null, company_id:null, q:''};
+let COLS = [], DOCS = [], SEL = null, searchTimer;
+
+function onSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { F.q = document.getElementById('search').value; loadList(); }, 250); }
+function setFilter(view, cid, coid) { F.view = view; F.collection_id = cid || null; F.company_id = coid || null; loadSide(); loadList(); }
+
+async function loadSide() {
+  const r = await lib('collections'); if (!r.ok) return;
+  COLS = r.collections;
+  if (r.types) TYPES = r.types;
+  const views = [['all','All documents',r.total,'bi-files'],['review','Needs review',r.needs_review,'bi-exclamation-circle'],
+                 ['expiring','Expiring ≤ 30 days',r.expiring,'bi-hourglass-split'],['expired','Expired',r.expired,'bi-x-circle'],['unsorted','Unsorted',r.unsorted,'bi-question-circle']];
+  let h = '<div class="side-h">Views</div>';
+  for (const v of views) h += `<div class="side-item ${F.view===v[0]&&!F.collection_id&&!F.company_id?'active':''}" onclick="setFilter('${v[0]}')"><span><i class="bi ${v[3]}"></i> ${v[1]}</span><span class="n">${Number(v[2])}</span></div>`;
+  h += `<div class="side-h"><span>Collections</span><span style="cursor:pointer" onclick="newCollection()" title="New collection">＋</span></div>`;
+  for (const c of COLS.filter(c => c.n > 0 || showEmpty || F.collection_id === c.id)) h += `<div class="side-item ${F.collection_id===c.id?'active':''}" onclick="setFilter('all',${Number(c.id)})"><span>${esc(c.name)}</span><span class="n">${Number(c.n)} <i class="bi bi-pencil" onclick="event.stopPropagation();editCollection(${Number(c.id)})"></i></span></div>`;
+  const nEmpty = COLS.filter(c => c.n === 0).length;
+  if (nEmpty) h += `<div class="side-item" onclick="toggleEmpty()"><span><i class="bi ${showEmpty ? 'bi-eye-slash' : 'bi-eye'}"></i> ${showEmpty ? 'Hide' : 'Show'} empty</span><span class="n">${nEmpty}</span></div>`;
+  h += `<div class="row mt8"><button class="btn-outline" onclick="resort()" title="Apply keywords to documents you haven't edited by hand"><i class="bi bi-funnel"></i> Re-sort</button></div>`;
+  const co = await lib('companies');
+  if (co.ok && co.companies.length) {
+    h += '<div class="side-h">Companies</div>';
+    for (const c of co.companies.slice(0, 25)) h += `<div class="side-item ${F.company_id===c.id?'active':''}" onclick="setFilter('all',null,${Number(c.id)})"><span>${esc(c.display)}${c.confirmed?'':' <span class="n" title="Detected automatically — edit a document to confirm">?</span>'}</span><span class="n">${Number(c.n)}</span></div>`;
+  }
+  document.getElementById('side').innerHTML = h;
+}
+
+async function newCollection() {
+  const name = prompt('New collection name (e.g. Banks, Engine specs):'); if (!name) return;
+  const kw = prompt('Optional keywords (comma-separated). New documents containing them go here:', '') || '';
+  const r = await lib('collection_save', {name, keywords: kw});
+  r.ok ? toast('Collection created') : toast(r.error, false); loadSide();
+}
+async function editCollection(id) {
+  const c = COLS.find(x => x.id === id); if (!c) return;
+  const name = prompt('Collection name:', c.name); if (name === null) return;
+  const kw = prompt('Keywords (comma-separated, empty = none). Use "delete" as name to remove an empty custom collection:', c.keywords); if (kw === null) return;
+  if (name.trim().toLowerCase() === 'delete') { const d = await lib('collection_delete', {id}); d.ok ? toast('Deleted') : toast(d.error, false); F.collection_id = null; loadSide(); loadList(); return; }
+  const r = await lib('collection_save', {id, name, keywords: kw});
+  r.ok ? toast('Saved') : toast(r.error, false); loadSide();
+}
+async function resort() { const r = await lib('resort'); toast(r.ok ? `${r.moved} documents moved` : r.error, r.ok); loadSide(); loadList(); }
+
+function expBadge(d) {
+  if (!d.expires) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  const days = Math.round((Date.parse(d.expires) - Date.parse(today)) / 864e5);
+  const basis = d.expires_basis ? ` (${esc(d.expires_basis)})` : '';
+  if (days < 0) return `<span class="badge b-err">expired ${esc(d.expires)}${basis}</span>`;
+  if (days <= 30) return `<span class="badge b-warn">expires ${esc(d.expires)}${basis}</span>`;
+  return `<span class="badge">until ${esc(d.expires)}${basis}</span>`;
+}
+function statusBadge(d) {
+  const m = {new:['b-warn','reading…'], needs_review:['b-warn','needs review'], needs_ocr:['b-err','needs OCR'], error:['b-err','error']}[d.status];
+  return m ? `<span class="badge ${m[0]}${d.status==='new'?' pulse':''}">${m[1]}</span>` : '';
+}
+function amount(d) {
+  if (d.amount_minor == null) return '';
+  const v = (d.amount_minor / 100).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return `${v} ${esc(d.currency || '')}`;
+}
+
+async function loadList() {
+  const r = await lib('list', F); if (!r.ok) return;
+  const sig = d => [d.status, d.doc_type, d.collection_id, d.summary, d.present].join('|');
+  const prev = new Map(DOCS.map(d => [d.id, sig(d)]));
+  DOCS = r.docs;
+  flashIds = flashOn && prev.size ? new Set(DOCS.filter(d => prev.get(d.id) !== sig(d)).map(d => d.id)) : new Set();
+  const el = document.getElementById('list');
+  if (!DOCS.length) { el.innerHTML = '<div class="empty">No documents here</div>'; return; }
+  el.innerHTML = DOCS.map(d => `
+    <div class="doc ${SEL===d.id?'sel':''}${flashIds.has(d.id)?' flash':''}" onclick="pick(${Number(d.id)})">
+      <div class="t">${esc(d.filename)}</div>
+      <div class="m"><span class="badge">${esc(tname(d.doc_type) || '?')}</span><span>${esc(d.doc_date || '')}</span><span>${esc(d.company || '')}${d.company && !d.company_confirmed ? ' ?' : ''}</span><span>${amount(d)}</span>${expBadge(d)}${statusBadge(d)}${d.source === 'ocr+rules' ? '<span class="badge b-warn" title="Recognized by OCR — verify numbers"><i class="bi bi-camera"></i> OCR</span>' : ''}${d.pii ? '<span class="badge b-warn">PII</span>' : ''}</div>
+      ${d.summary ? `<div class="s">${esc(d.summary)}</div>` : ''}
+    </div>`).join('');
+}
+
+async function pick(id) {
+  SEL = id;
+  const r = await lib('doc', {id}); if (!r.ok) return;
+  const d = r.doc;
+  const colOpts = '<option value="">— none —</option>' + COLS.map(c => `<option value="${Number(c.id)}" ${d.collection_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+  const typeOpts = TYPES.map(t => `<option value="${esc(t)}" ${d.doc_type===t?'selected':''}>${esc(tname(t))}</option>`).join('');
+  const isOcr = d.source === 'ocr+rules';
+  const needsOcr = d.status === 'needs_ocr';
+  document.getElementById('detail').innerHTML = `
+    <h2>${esc(d.filename)}</h2>
+    <div class="row">${statusBadge(d)}${expBadge(d)}<span class="badge">${Math.round((d.confidence||0)*100)}% sure</span><span class="badge ${isOcr ? 'b-warn' : ''}" ${isOcr ? 'title="Recognized by OCR"' : ''}>${d.user_locked ? 'edited by you' : esc(d.source || 'unknown')}</span></div>
+    <label>Type</label><select id="f-type">${typeOpts}</select>
+    <label>Company ${d.company && !d.company_confirmed ? '(auto-detected — save to confirm)' : ''}</label><input type="text" id="f-company" value="${esc(d.company || '')}">
+    <label>Document date</label><input type="date" id="f-date" value="${esc(d.doc_date || '')}">
+    <label>Number</label><input type="text" id="f-number" value="${esc(d.doc_number || '')}">
+    <label>Valid until / due date</label><input type="date" id="f-expires" value="${esc(d.expires || '')}">
+    <label>Collection</label><select id="f-coll">${colOpts}</select>
+    <label>Summary (max 300 characters)</label><textarea id="f-summary" rows="4" maxlength="300">${esc(d.summary || '')}</textarea>
+    <div class="row mt8"><button class="btn-primary" onclick="saveDoc(${Number(d.id)})"><i class="bi bi-check-lg"></i> Save</button>
+      <button class="btn-outline" onclick="analyzeSingle(${Number(d.id)})"><i class="bi bi-magic"></i> Draft from this</button>
+      ${needsOcr ? `<button class="btn-outline" onclick="retryOcr(${Number(d.id)})"><i class="bi bi-camera"></i> Run OCR scan</button>` : ''}</div>
+    <div class="s" style="color:var(--mute);font-size:.76rem;margin-top:8px">Amount: ${amount(d) || '—'}. Files in the inbox are never modified or deleted.</div>
+    ${isOcr ? `<div class="ocr-alert"><i class="bi bi-exclamation-triangle"></i> This document was recognized by OCR. Amounts, dates and document numbers may be inaccurate — please verify before relying on them.</div>` : ''}
+    ${needsOcr ? `<div class="ocr-alert"><i class="bi bi-info-circle"></i> No extractable text found. Start Mary Guardian with <code>--ocr-model</code> and <code>--ocr-mmproj</code> to enable OCR, then press “Run OCR scan”.</div>` : ''}`;
+  document.querySelectorAll('.doc').forEach(e => e.classList.remove('sel'));
+  loadList();
+}
+
+async function saveDoc(id) {
+  const v = i => document.getElementById(i).value;
+  const r = await lib('update', {id, doc_type:v('f-type'), company:v('f-company'), doc_date:v('f-date'), doc_number:v('f-number'),
+                                  expires:v('f-expires'), collection_id:Number(v('f-coll')) || 0, summary:v('f-summary')});
+  if (!r.ok) { toast(r.error, false); return; }
+  toast('Saved'); loadSide(); pick(id);
+}
+function analyzeSingle(id) {
+  const d = DOCS.find(x => x.id === id); if (!d) return;
+  showTab('single'); document.getElementById('paths').value = d.filename;
+}
+async function retryOcr(id) {
+  toast('Starting scan (OCR phase included)…');
+  const r = await lib('scan');
+  if (r.ok && r.started) poll();
+  else if (!r.ok) toast(r.error || 'Scan failed', false);
+}
+
+/* ---------- cleanup ---------- */
+async function loadCleanup() {
+  const r = await lib('cleanup'); if (!r.ok) return;
+  const sec = (title, hint, items) => `<div class="card"><h2>${title} (${items.length})</h2><div style="color:var(--mute);font-size:.8rem;margin-bottom:8px">${hint}</div>` +
+    (items.length ? items.map(d => `<div class="doc" onclick="openDoc(${Number(d.id)})"><div class="t">${esc(d.filename)}</div><div class="m"><span class="badge">${esc(tname(d.doc_type)||'?')}</span><span>${esc(d.company||'')}</span><span>${esc(d.doc_date||'')}</span>${d.expires?`<span>until ${esc(d.expires)}</span>`:''}<span style="color:var(--warn)">${esc(d.reason)}</span></div>${d.summary?`<div class="s">${esc(d.summary)}</div>`:''}</div>`).join('') : '<div class="empty">Nothing here</div>') + '</div>';
+  let h = sec('Expired', 'Candidates to archive or delete — you decide, files are never touched automatically.', r.expired)
+        + sec('Expiring within 30 days', 'Renew, pay or replace these.', r.expiring);
+  h += `<div class="card"><h2>Possible duplicates (${r.duplicates.length} groups)</h2>` +
+    (r.duplicates.length ? r.duplicates.map(g => '<div style="margin-bottom:10px">' + g.map(d => `<div class="doc" onclick="openDoc(${Number(d.id)})"><div class="t">${esc(d.filename)}</div><div class="m"><span>${esc(d.company||'')}</span><span>${esc(d.doc_date||'')}</span></div></div>`).join('') + '</div>').join('') : '<div class="empty">Nothing here</div>') + '</div>';
+  h += sec('Needs review', 'Low confidence, OCR-recognized documents or suspicious content.', r.review) + sec('Missing files', 'Removed from the inbox since the last scan.', r.missing);
+  document.getElementById('cleanup-body').innerHTML = h;
+}
+function openDoc(id) { showTab('library'); F.view='all'; F.collection_id=null; F.company_id=null; F.q=''; document.getElementById('search').value=''; loadSide(); loadList().then(() => pick(id)); }
+
+/* ---------- ask ---------- */
+async function ask() {
+  const q = document.getElementById('question').value.trim(); if (!q) return;
+  document.getElementById('btn-ask').disabled = true; document.getElementById('ask-status').textContent = 'Thinking…';
+  const r = await lib('ask', {question: q});
+  document.getElementById('btn-ask').disabled = false; document.getElementById('ask-status').textContent = '';
+  if (!r.ok) { toast(r.error, false); return; }
+  const a = document.getElementById('answer'); a.style.display = 'block'; a.innerHTML = renderMd(r.answer) + (r.pii_warning ? '<div class="pii-alert">The answer contains personal data.</div>' : '');
+  document.getElementById('sources').innerHTML = '<div style="margin-top:8px;color:var(--mute);font-size:.78rem">Documents used:</div>' + r.sources.map(i => `<span class="chip" onclick="openDoc(${Number(i)})">#${Number(i)}</span>`).join('');
+}
+
+/* ---------- profile ---------- */
+const PK = ['role','specialty','country','goal','notes'];
+async function loadProfile() { const r = await lib('profile_get'); if (r.ok) PK.forEach(k => document.getElementById('p-' + k).value = r.profile[k] || ''); }
+async function saveProfile() { const d = {}; PK.forEach(k => d[k] = document.getElementById('p-' + k).value); const r = await lib('profile_set', d); toast(r.ok ? 'Saved' : r.error, r.ok); }
+
+/* ---------- single document (old flow) ---------- */
+let currentFullText = '';
+function renderMd(src) {
+  const L = String(src).replace(/\r/g, '').split('\n'); const out = [];
+  const inline = t => { t = esc(t); t = t.replace(/`([^`]+)`/g, '<code>$1</code>'); t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); t = t.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>'); return t; };
+  const isSep = l => l !== undefined && l.includes('-') && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+  const cells = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  const isBlock = (l, next) => /^\s*(#{1,6}\s|```|[-*+]\s|\d+[.)]\s|>|(-{3,}|\*{3,}|_{3,})\s*$)/.test(l) || (l.trim().startsWith('|') && isSep(next));
+  let i = 0, m;
+  while (i < L.length) {
+    const l = L[i];
+    if (!l.trim()) { i++; continue; }
+    if (/^\s*```/.test(l)) { const buf = []; i++; while (i < L.length && !/^\s*```/.test(L[i])) buf.push(L[i++]); i++; out.push('<pre><code>' + esc(buf.join('\n')) + '</code></pre>'); continue; }
+    if ((m = l.match(/^\s*(#{1,6})\s+(.*)$/))) { const n = m[1].length; out.push(`<h${n}>${inline(m[2])}</h${n}>`); i++; continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)) { out.push('<hr>'); i++; continue; }
+    if (l.trim().startsWith('|') && isSep(L[i + 1])) {
+      const head = cells(l); i += 2;
+      let h = '<table><thead><tr>' + head.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>';
+      while (i < L.length && L[i].trim().startsWith('|')) { h += '<tr>' + cells(L[i]).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>'; i++; }
+      out.push(h + '</tbody></table>'); continue;
     }
-    
-    async function loadStats() {
-        try {
-            const resp = await fetch('/api/agent/market_stats?days=1');
-            const data = await resp.json();
-            
-            let html = '';
-            for (let s of data.stats) {
-                html += `<tr>
-                    <td>${s.model}</td>
-                    <td>${s.storage}</td>
-                    <td><strong>${s.min_price.toLocaleString()}</strong> ₸</td>
-                    <td>${s.avg_price.toLocaleString()} ₸</td>
-                    <td>${s.max_price.toLocaleString()} ₸</td>
-                    <td>-</td>
-                </tr>`;
-            }
-            document.getElementById('stats-table').innerHTML = html || '<tr><td colspan="6">Нет данных</td></tr>';
-        } catch(e) {
-            console.error('Stats error:', e);
-        }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+      const tag = /^\s*\d/.test(l) ? 'ol' : 'ul'; const items = []; let mm;
+      while (i < L.length && (mm = L[i].match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/))) { items.push(`<li>${inline(mm[1])}</li>`); i++; }
+      out.push(`<${tag}>${items.join('')}</${tag}>`); continue;
     }
-    
-    async function loadStatus() {
-        try {
-            const resp = await fetch('/api/agent/status');
-            const data = await resp.json();
-            
-            if (data.status === 'active') {
-                document.getElementById('usd-rate').innerHTML = data.usd_rate?.toFixed(2) || '--';
-                document.getElementById('eur-rate').innerHTML = data.eur_rate?.toFixed(2) || '--';
-                document.getElementById('total-records').innerHTML = data.total_records || 0;
-                document.getElementById('last-update').innerHTML = new Date(data.timestamp).toLocaleTimeString();
-                document.getElementById('live-dot').style.background = '#22c55e';
-                document.getElementById('live-status').innerHTML = 'Active';
-            } else {
-                document.getElementById('live-dot').style.background = '#ef4444';
-                document.getElementById('live-status').innerHTML = 'Stopped';
-            }
-        } catch(e) {
-            document.getElementById('live-dot').style.background = '#ef4444';
-            document.getElementById('live-status').innerHTML = 'Offline';
-        }
-    }
-    
-    async function loadReports() {
-        try {
-            const resp = await fetch('/api/agent/reports');
-            const data = await resp.json();
-            
-            let html = '<ul style="list-style: none; padding: 0;">';
-            for (let r of data.reports) {
-                html += `<li style="padding: 8px; border-bottom: 1px solid #27272a;">
-                    <span>📄 ${r.name}</span>
-                    <span style="float: right;">
-                        <button onclick="viewReport('${r.name}')" class="primary" style="padding: 2px 8px;">Просмотр</button>
-                    </span>
-                </li>`;
-            }
-            html += '</ul>';
-            document.getElementById('reports-list').innerHTML = html || '<p>Нет отчётов</p>';
-        } catch(e) {
-            console.error('Reports error:', e);
-        }
-    }
-    
-    async function viewReport(filename) {
-        try {
-            const resp = await fetch(`/api/agent/report/${filename}`);
-            const data = await resp.json();
-            
-            if (data.content) {
-                document.getElementById('report-title').innerHTML = filename;
-                document.getElementById('report-content').innerHTML = data.content;
-                document.getElementById('report-viewer').style.display = 'block';
-                addLog('info', `Открыт отчёт: ${filename}`);
-            }
-        } catch(e) {
-            addLog('error', 'Ошибка загрузки отчёта: ' + e.message);
-        }
-    }
-    
-    function closeReport() {
-        document.getElementById('report-viewer').style.display = 'none';
-    }
-    
-    async function runAgentNow() {
-        addLog('info', 'Запуск сбора данных...');
-        try {
-            const resp = await fetch('/api/agent/run_now', { method: 'POST' });
-            const data = await resp.json();
-            if (data.success) {
-                addLog('success', 'Сбор данных завершён');
-                setTimeout(() => { refreshPrices(); loadStats(); loadReports(); }, 3000);
-            } else {
-                addLog('error', 'Ошибка: ' + data.error);
-            }
-        } catch(e) {
-            addLog('error', 'Ошибка запуска: ' + e.message);
-        }
-    }
-    
-    // Инициализация
-    refreshPrices();
-    loadStats();
-    loadStatus();
-    loadReports();
-    
-    setInterval(refreshPrices, 30000);
-    setInterval(loadStats, 60000);
-    setInterval(loadStatus, 5000);
-    setInterval(loadReports, 60000);
+    if (/^\s*>/.test(l)) { const buf = []; while (i < L.length && /^\s*>/.test(L[i])) buf.push(L[i++].replace(/^\s*>\s?/, '')); out.push('<blockquote>' + inline(buf.join(' ')) + '</blockquote>'); continue; }
+    const buf = [l]; i++;
+    while (i < L.length && L[i].trim() && !isBlock(L[i], L[i + 1])) buf.push(L[i++]);
+    out.push('<p>' + buf.map(inline).join('<br>') + '</p>');
+  }
+  return out.join('\n');
+}
+function setView(mode) {
+  const area = document.getElementById('draft-area'), prev = document.getElementById('draft-preview');
+  if (mode === 'view') prev.innerHTML = renderMd(area.value);
+  area.style.display = mode === 'edit' ? 'block' : 'none'; prev.style.display = mode === 'view' ? 'block' : 'none';
+  document.getElementById('tab-view').classList.toggle('active', mode === 'view'); document.getElementById('tab-edit').classList.toggle('active', mode === 'edit');
+}
+function notify(msg, ok = true) { const el = document.getElementById('approve-status'); el.textContent = msg; el.style.color = ok ? 'var(--ok)' : 'var(--err)'; }
+async function fillPicker() {
+  const r = await lib('list', {}); if (!r.ok) return;
+  document.getElementById('pick').innerHTML = r.docs.map(d => `<option value="${esc(d.filename)}">${esc(d.filename)}${d.doc_type ? ' — ' + esc(d.doc_type) : ''}</option>`).join('');
+}
+async function upload() {
+  const picked = [...document.getElementById('pick').selectedOptions].map(o => o.value);
+  const typed = document.getElementById('paths').value.split(',').map(s => s.trim()).filter(Boolean);
+  const paths = picked.length ? picked : typed;
+  if (!paths.length) { notify('Pick or type a file name', false); return; }
+  notify('Extracting text…');
+  const data = await post('/api/upload', {paths});
+  if (!data.ok) { notify('Error: ' + data.error, false); return; }
+  currentFullText = data.full_text;
+  const c = document.getElementById('preview-container');
+  c.innerHTML = `<button class="btn-outline" onclick="showFullText()"><i class="bi bi-eye"></i> Show full text (${Number(data.length)} chars)</button>`;
+  notify('Text extracted'); refreshStatus();
+}
+function showFullText() { document.getElementById('modal-text-body').textContent = currentFullText; document.getElementById('text-modal').style.display = 'flex'; }
+function closeModal() { document.getElementById('text-modal').style.display = 'none'; }
+async function generateDraft() {
+  const instruction = document.getElementById('instruction').value.trim();
+  document.getElementById('btn-draft').disabled = true; document.getElementById('draft-spinner').style.display = 'inline';
+  notify('Generating…');
+  const data = await post('/api/draft', {instruction});
+  document.getElementById('btn-draft').disabled = false; document.getElementById('draft-spinner').style.display = 'none';
+  if (!data.ok) { notify('Error: ' + data.error, false); return; }
+  notify(data.truncated ? 'Document is longer than the model context; only part was used' : 'Draft ready. Review and approve.', !data.truncated);
+  document.getElementById('draft-area').value = data.draft;
+  document.getElementById('pii-alert').style.display = data.pii_warning ? 'block' : 'none';
+  document.getElementById('btn-export').disabled = true;
+  setView('view'); refreshStatus();
+}
+async function approve() { const d = await post('/api/approve', {}); if (!d.ok) { notify('Error', false); return; } document.getElementById('btn-export').disabled = false; notify('Approved'); refreshStatus(); }
+async function editAndApprove() {
+  const d = await post('/api/edit', {draft: document.getElementById('draft-area').value});
+  if (!d.ok) { notify('Error: ' + (d.error || ''), false); return; }
+  if (d.pii_warning) document.getElementById('pii-alert').style.display = 'block';
+  document.getElementById('btn-export').disabled = false; notify('Edits saved and approved'); refreshStatus();
+}
+async function exportDraft() { const d = await post('/api/export', {name: 'draft.md'}); if (!d.ok) { notify('Error: ' + d.error, false); return; } notify('Saved: ' + d.saved_to); }
+
+const stepLabels = {idle:['Idle',''], extracted:['Text ready','b-ok'], draft_ready:['Draft','b-warn'], approved:['Approved','b-ok'], error:['Error','b-err'], generating:['Generating','b-warn']};
+async function refreshStatus() {
+  const data = await get('/api/status'); if (!data) return;
+  const s = stepLabels[data.step] || [data.step, ''];
+  const el = document.getElementById('step-badge'); el.textContent = s[0]; el.className = 'badge ' + s[1];
+  const mb = document.getElementById('model-badge');
+  mb.textContent = data.model_loaded ? 'model loaded' : 'model not loaded'; mb.className = 'badge ' + (data.model_loaded ? 'b-ok' : 'b-err');
+  document.getElementById('pii-status').style.display = data.pii_warning ? 'inline-flex' : 'none';
+}
+async function refreshAudit() {
+  if (!document.getElementById('pane-audit').classList.contains('show')) return;
+  const data = await get('/api/audit'); if (!data || !data.ok) return;
+  document.getElementById('audit-body').innerHTML = data.logs.slice(-60).reverse().map(e =>
+    `<tr><td>${esc(e.ts)}</td><td>${esc(e.action)}</td><td class="${e.allowed ? 'log-ok' : 'log-blocked'}">${e.allowed ? '✓' : '✗'}</td><td>${esc(e.reason || '')}</td></tr>`).join('');
+}
+
+setInterval(() => { refreshStatus(); refreshAudit(); }, 3000);
+refreshStatus(); loadSide(); loadList(); poll(); setView('view');
 </script>
 </body>
 </html>
